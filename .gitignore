@@ -1,0 +1,21 @@
+# Credentials – never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+*.log
+.DS_Store
+
+# Data: cache and user-specific files (keep *.example.json for repo)
+data/cache/
+data/players_reference.json
+data/seed_squads_20*.json
+!data/seed_squads_20*.example.json

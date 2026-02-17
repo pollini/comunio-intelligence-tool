@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="de" id="html-lang">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liga Intelligence</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --danger: #f85149;
+      --success: #3fb950;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .toolbar {
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .error { color: var(--danger); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.75rem;
+    }
+    th {
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .in-minus { color: var(--danger); }
+    .no-activity { color: var(--muted); }
+    .you { color: var(--accent); font-weight: 500; }
+    .transfer-market { max-width: 280px; line-height: 1.35; }
+    .player-count-low { color: var(--danger); }
+    .league-meta { margin-bottom: 0.5rem; }
+    .lang-switch { margin-left: auto; }
+    .lang-switch button { background: transparent; color: var(--muted); padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+    .lang-switch button.active { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <h1 id="page-title">Liga Intelligence</h1>
+  <div class="toolbar">
+    <button type="button" id="refresh">Aktualisieren</button>
+    <span class="status" id="status"></span>
+    <span class="lang-switch">
+      <button type="button" id="lang-de" data-lang="de">DE</button>
+      <button type="button" id="lang-en" data-lang="en">EN</button>
+    </span>
+  </div>
+  <div id="error" class="status error"></div>
+  <div id="league-meta" class="status league-meta"></div>
+  <table id="table">
+    <thead>
+      <tr>
+        <th data-i18n="th_manager">Manager</th>
+        <th class="num" data-i18n="th_points">Punkte</th>
+        <th class="num" data-i18n="th_balance">Kontostand</th>
+        <th class="num" data-i18n="th_team_value">Mannschaftswert</th>
+        <th class="num" data-i18n="th_credit">Kreditrahmen</th>
+        <th data-i18n="th_tm">Spieler auf TM</th>
+        <th class="num" data-i18n="th_salary">Gehalt (heute)</th>
+        <th data-i18n="th_activity">Letzte Aktivität</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <script>
+    const tbody = document.getElementById('tbody');
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const metaEl = document.getElementById('league-meta');
+    const refreshBtn = document.getElementById('refresh');
+
+    const translations = {
+      de: {
+        title: 'Liga Intelligence',
+        refresh: 'Aktualisieren',
+        th_manager: 'Manager',
+        th_points: 'Punkte',
+        th_balance: 'Kontostand',
+        th_team_value: 'Mannschaftswert',
+        th_credit: 'Kreditrahmen',
+        th_tm: 'Spieler auf TM',
+        th_salary: 'Gehalt (heute)',
+        th_activity: 'Letzte Aktivität',
+        you: '(Du)',
+        in_minus: 'Im Minus',
+        loading: 'Lade…',
+        error_prefix: 'Fehler: ',
+        managers_count: ' Manager',
+        salaries_on: 'Gehälter: aktiv',
+        salaries_off: 'Gehälter: aus',
+        credit_none: 'Kreditrahmen: keiner',
+        credit_quarter: 'Kreditrahmen: 1/4 Mannschaftswert',
+        minus_allowed: 'Minus erlaubt: ',
+        minus_rules: 'Minus: siehe Ligaregeln',
+        league_fallback: 'Liga',
+      },
+      en: {
+        title: 'League Intelligence',
+        refresh: 'Refresh',
+        th_manager: 'Manager',
+        th_points: 'Points',
+        th_balance: 'Balance',
+        th_team_value: 'Team value',
+        th_credit: 'Credit limit',
+        th_tm: 'Players on TM',
+        th_salary: 'Salary (today)',
+        th_activity: 'Last activity',
+        you: '(You)',
+        in_minus: 'In the red',
+        loading: 'Loading…',
+        error_prefix: 'Error: ',
+        managers_count: ' managers',
+        salaries_on: 'Salaries: on',
+        salaries_off: 'Salaries: off',
+        credit_none: 'Credit limit: none',
+        credit_quarter: 'Credit limit: 1/4 team value',
+        minus_allowed: 'Negative allowed: ',
+        minus_rules: 'Negative: see league rules',
+        league_fallback: 'League',
+      },
+    };
+
+    let currentLang = localStorage.getItem('comunio-lang') || 'de';
+    function t(key) { return (translations[currentLang] || translations.de)[key] ?? key; }
+    function setLanguage(lang) {
+      if (lang !== 'de' && lang !== 'en') return;
+      currentLang = lang;
+      localStorage.setItem('comunio-lang', lang);
+      document.documentElement.lang = lang;
+      document.getElementById('lang-de').classList.toggle('active', lang === 'de');
+      document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+      document.getElementById('refresh').textContent = t('refresh');
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && t(key)) el.textContent = t(key);
+      });
+      if (lastMeta) updateMetaText(lastMeta);
+      if (lastManagerCount != null) statusEl.textContent = lastManagerCount + t('managers_count');
+      const titleEl = document.getElementById('page-title');
+      const titleText = lastLeagueName ? lastLeagueName + ' Intelligence' : t('title');
+      if (titleEl) titleEl.textContent = titleText;
+      document.title = titleText;
+      if (lastManagers && lastManagers.length) render(lastManagers, lastCurrentUserId);
+    }
+    let lastMeta = null, lastManagerCount = null, lastLeagueName = null, lastManagers = null, lastCurrentUserId = null;
+    function updateMetaText(meta) {
+      const salaries = meta.salaries_enabled ? t('salaries_on') : t('salaries_off');
+      const cf = meta.creditfactor === 'dynamic' ? 'dynamic' : (meta.creditfactor || '');
+      const minus = meta.credit_factor_disabled
+        ? t('credit_none')
+        : (cf === 'dynamic' ? t('credit_quarter') : (cf ? t('minus_allowed') + cf : t('minus_rules')));
+      metaEl.textContent = salaries + ' · ' + minus;
+    }
+
+    function formatExactEuro(n) {
+      if (n == null || n === undefined) return '—';
+      const num = Number(n);
+      if (isNaN(num)) return '—';
+      return num.toLocaleString('de-DE') + ' €';
+    }
+
+    function formatListedSince(iso) {
+      if (!iso || typeof iso !== 'string') return '';
+      const s = iso.replace(/\+(\d{2})(\d{2})$/, '+$1:$2');
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatTransferMarket(players) {
+      if (!players || !players.length) return '—';
+      return players.map(p => {
+        const dateStr = p.listed_since ? ' (' + formatListedSince(p.listed_since) + ')' : '';
+        return escapeHtml(p.name) + ' <span class="num">' + formatExactEuro(p.market_value) + '</span>' + dateStr;
+      }).join('<br>');
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      const opts = { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric' };
+      const hasTime = typeof iso === 'string' && iso.includes('T');
+      if (hasTime) {
+        return d.toLocaleString('de-DE', { ...opts, hour: '2-digit', minute: '2-digit' });
+      }
+      return d.toLocaleDateString('de-DE', opts);
+    }
+
+    function render(managers, currentUserId) {
+      tbody.innerHTML = managers.map(m => `
+        <tr>
+          <td>${escapeHtml(m.name)}${m.user_id != null && m.user_id === currentUserId ? ' <span class="you">' + escapeHtml(t('you')) + '</span>' : ''}</td>
+          <td class="num">${m.points}</td>
+          <td class="num ${m.in_minus ? 'in-minus' : ''}">${formatExactEuro(m.balance)}</td>
+          <td class="num">${formatExactEuro(m.team_value)}${m.player_count != null ? ' <span class="player-count' + (m.player_count < 11 ? ' player-count-low' : '') + '">(' + m.player_count + ')</span>' : ''}</td>
+          <td class="num">${formatExactEuro(m.max_minus_allowed)}</td>
+          <td class="transfer-market">${formatTransferMarket(m.transfer_market_players)}</td>
+          <td class="num">${m.salary_today != null ? formatExactEuro(m.salary_today) : '—'}</td>
+          <td class="${m.last_activity ? '' : 'no-activity'}">${formatDate(m.last_activity)}</td>
+          <td>${m.in_minus ? '<span class="in-minus">' + escapeHtml(t('in_minus')) + '</span>' : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    async function load() {
+      errorEl.textContent = '';
+      statusEl.textContent = t('loading');
+      refreshBtn.disabled = true;
+      try {
+        const base = window.location.origin;
+        const r = await fetch(base + '/api/league');
+        if (!r.ok) {
+          const raw = await r.text();
+          let msg = raw || r.statusText;
+          try {
+            const err = JSON.parse(raw);
+            if (err.detail) msg = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+          } catch (_) {}
+          throw new Error(msg);
+        }
+        const data = await r.json();
+        const serverLang = data.default_language;
+        if (serverLang === 'de' || serverLang === 'en') {
+          const stored = localStorage.getItem('comunio-lang');
+          if (!stored) { currentLang = serverLang; localStorage.setItem('comunio-lang', serverLang); setLanguage(serverLang); }
+        }
+        const currentUserId = (data.league_meta || {}).statement_user_id ?? null;
+        lastManagers = data.managers || [];
+        lastCurrentUserId = currentUserId;
+        render(lastManagers, currentUserId);
+        const n = lastManagers.length;
+        lastManagerCount = n;
+        lastMeta = data.league_meta || {};
+        lastLeagueName = (lastMeta.league_name || '').trim() || null;
+        statusEl.textContent = n + t('managers_count');
+        updateMetaText(lastMeta);
+        const titleText = lastLeagueName ? lastLeagueName + ' Intelligence' : t('title');
+        document.title = titleText;
+        const titleEl = document.getElementById('page-title');
+        if (titleEl) titleEl.textContent = titleText;
+      } catch (e) {
+        errorEl.textContent = t('error_prefix') + e.message;
+        statusEl.textContent = '';
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('lang-de').addEventListener('click', () => setLanguage('de'));
+    document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+    setLanguage(currentLang);
+    refreshBtn.addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>
