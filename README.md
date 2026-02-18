@@ -1,6 +1,6 @@
 # Comunio Intelligence Tool
 
-Web app that uses the **Comunio REST API** to show your league: **balance**, **team value**, **credit limit**, **salary (today)** (with seed), **last activity**, and **"In the red"**. UI language: DE or EN.
+Web app that uses the **Comunio REST API** to show your league's members with: **balance**, **team value**, **credit limit**, **salary (today)** (with seed), **last activity**, and **"In the red"**. UI language: DE or EN.
 
 > **Tested with 1. Bundesliga only.** The tool should work with other Comunio leagues (2. Bundesliga, other competitions), but it has not been tested or developed for them. Season transition date (e.g. 2025-05-27) and API behaviour may differ per league.
 
@@ -90,8 +90,8 @@ The API has **no historical squads** – only the current squad per user. To sho
 4. **Use the seed:** In `.env` set `SEED_SQUADS_PATH=data/seed_squads_2025-05-27.json` (or your path) and `SEASON_START=2025-05-27` (or your season start). Restart the app.
 
 **Testing reconstruction (optional):**  
-Squad on a day: `venv/bin/python scripts/reconstruct_historical_squads.py --seed data/seed_squads_2025-05-27.json --date 2025-06-01`  
-Date range: add `--from 2025-05-27 --to 2025-06-15`. With salaries: add `--with-values`.
+Squad on a day: `venv/bin/python scripts/reconstruct_historical_squads.py --seed data/seed_squads_2025-05-27.json --date 2025-08-01`  
+Date range: add `--from 2025-05-27 --to 2025-08-01`. With salaries: add `--with-values`.
 
 **Troubleshooting (wrong player count or balance):**
 - Manager not in seed or never in a transfer → add to seed
